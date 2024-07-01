@@ -2,72 +2,91 @@ import streamlit as st
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
-import io
 import time
 from google_play_scraper import Sort, reviews as gp_reviews, app as gp_app
+
+headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+}
 
 # Function to scrape reviews from Trustpilot by organization name
 def scrape_trustpilot_by_name(name):
     search_url = f"https://www.trustpilot.com/search?query={name}"
-    response = requests.get(search_url)
+    response = requests.get(search_url, headers=headers)
     soup = BeautifulSoup(response.content, 'html.parser')
     try:
         company_url = soup.find('a', class_='search-result-heading__title').get('href')
         full_url = f"https://www.trustpilot.com{company_url}"
         return scrape_trustpilot(full_url)
-    except AttributeError:
+    except AttributeError as e:
+        st.write(f"Error finding company URL: {e}")
         return None
 
 def scrape_trustpilot(url):
     reviews = []
-    response = requests.get(url)
-    soup = BeautifulSoup(response.content, 'html.parser')
-    review_containers = soup.select('.styles_review__3HHTb')
-    for review in review_containers:
-        reviewer_name = review.select_one('.styles_consumerDetailsWrapper__nU4Xd .typography_typography__F2JzV.typography_bodysmall__2jSAv.typography_color--dark__5k6hX.typography_fontstyle--bold__j6yRo').text.strip()
-        review_date = review.select_one('time').text.strip()
-        review_title = review.select_one('h2').text.strip()
-        review_text = review.select_one('p').text.strip()
-        review_rating = review.select_one('.styles_reviewHeader__iU9Px img')['alt']
-        reviews.append({
-            'Reviewer Name': reviewer_name,
-            'Review Date': review_date,
-            'Review Title': review_title,
-            'Review Text': review_text,
-            'Review Rating': review_rating
-        })
+    try:
+        response = requests.get(url, headers=headers)
+        soup = BeautifulSoup(response.content, 'html.parser')
+        review_containers = soup.select('.styles_review__3HHTb')
+        for review in review_containers:
+            reviewer_name = review.select_one('.styles_consumerDetailsWrapper__nU4Xd .typography_typography__F2JzV.typography_bodysmall__2jSAv.typography_color--dark__5k6hX.typography_fontstyle--bold__j6yRo').text.strip()
+            review_date = review.select_one('time').text.strip()
+            review_title = review.select_one('h2').text.strip()
+            review_text = review.select_one('p').text.strip()
+            review_rating = review.select_one('.styles_reviewHeader__iU9Px img')['alt']
+            reviews.append({
+                'Reviewer Name': reviewer_name,
+                'Review Date': review_date,
+                'Review Title': review_title,
+                'Review Text': review_text,
+                'Review Rating': review_rating
+            })
+    except requests.exceptions.RequestException as e:
+        st.write(f"An error occurred while making the request: {e}")
+    except AttributeError as e:
+        st.write(f"An error occurred while parsing the HTML: {e}")
+    except Exception as e:
+        st.write(f"An unexpected error occurred: {e}")
     return reviews
 
 # Function to scrape reviews from PissedConsumer by organization name
 def scrape_pissedconsumer_by_name(name):
     search_url = f"https://www.pissedconsumer.com/search.html?q={name}"
-    response = requests.get(search_url)
+    response = requests.get(search_url, headers=headers)
     soup = BeautifulSoup(response.content, 'html.parser')
     try:
         company_url = soup.find('a', class_='search-results-title').get('href')
         full_url = f"https://www.pissedconsumer.com{company_url}"
         return scrape_pissedconsumer(full_url)
-    except AttributeError:
+    except AttributeError as e:
+        st.write(f"Error finding company URL: {e}")
         return None
 
 def scrape_pissedconsumer(url):
     reviews = []
-    response = requests.get(url)
-    soup = BeautifulSoup(response.content, 'html.parser')
-    review_containers = soup.select('.complaints__item')
-    for review in review_containers:
-        reviewer_name = review.select_one('.complaints__author a').text.strip()
-        review_date = review.select_one('time').text.strip()
-        review_title = review.select_one('h3 a').text.strip()
-        review_text = review.select_one('.complaints__text').text.strip()
-        review_rating = review.select_one('.rating img')['alt']
-        reviews.append({
-            'Reviewer Name': reviewer_name,
-            'Review Date': review_date,
-            'Review Title': review_title,
-            'Review Text': review_text,
-            'Review Rating': review_rating
-        })
+    try:
+        response = requests.get(url, headers=headers)
+        soup = BeautifulSoup(response.content, 'html.parser')
+        review_containers = soup.select('.complaints__item')
+        for review in review_containers:
+            reviewer_name = review.select_one('.complaints__author a').text.strip()
+            review_date = review.select_one('time').text.strip()
+            review_title = review.select_one('h3 a').text.strip()
+            review_text = review.select_one('.complaints__text').text.strip()
+            review_rating = review.select_one('.rating img')['alt']
+            reviews.append({
+                'Reviewer Name': reviewer_name,
+                'Review Date': review_date,
+                'Review Title': review_title,
+                'Review Text': review_text,
+                'Review Rating': review_rating
+            })
+    except requests.exceptions.RequestException as e:
+        st.write(f"An error occurred while making the request: {e}")
+    except AttributeError as e:
+        st.write(f"An error occurred while parsing the HTML: {e}")
+    except Exception as e:
+        st.write(f"An unexpected error occurred: {e}")
     return reviews
 
 # Function to scrape reviews from Google Play
@@ -88,7 +107,7 @@ def scrape_google_play(app_id, num_reviews=100, sort_order=Sort.NEWEST):
         next_token = token
         if not next_token:
             break
-        time.sleep(5)
+        time.sleep(2)  # Add delay to avoid rate limiting
     reviews_text = [review['content'] for review in all_reviews]
     return reviews_text
 
@@ -149,7 +168,7 @@ elif option == 'PissedConsumer':
 elif option == 'Google Play':
     st.write("To find the app ID, go to the Google Play Store, search for the app, and copy the part of the URL after `id=` (e.g., for `https://play.google.com/store/apps/details?id=com.example.app`, the app ID is `com.example.app`).")
     app_id = st.text_input('Enter the Google Play App ID:')
-    num_reviews = st.slider('Select number of reviews to scrape', min_value=50, max_value=500, step=50, value=50)
+    num_reviews = st.slider('Select number of reviews to scrape', min_value=100, max_value=5000, step=100, value=100)
     sort_order = st.selectbox('Select the sort order of the reviews', ['Newest', 'Rating'])
     sort_order_map = {'Newest': Sort.NEWEST, 'Rating': Sort.RATING}
     sort_order_selected = sort_order_map[sort_order]
