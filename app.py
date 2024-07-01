@@ -47,16 +47,16 @@ def scrape_pissedconsumer(url):
     return reviews
 
 # Function to scrape reviews from Google Play
-def scrape_google_play(app_id, reviews_per_request=100, total_reviews_to_fetch=200):
+def scrape_google_play(app_id, num_reviews=100, sort_order=Sort.NEWEST):
     all_reviews = []
     next_token = None
-    while len(all_reviews) < total_reviews_to_fetch:
+    while len(all_reviews) < num_reviews:
         current_reviews, token = gp_reviews(
             app_id,
             lang='en',
             country='us',
-            sort=Sort.NEWEST,
-            count=reviews_per_request,
+            sort=sort_order,
+            count=min(num_reviews - len(all_reviews), 100),
             filter_score_with=None,
             continuation_token=next_token
         )
@@ -90,20 +90,6 @@ def download_csv(data, filename):
         mime='text/csv',
     )
 
-# Function to download data as Excel
-def download_excel(data, filename):
-    output = io.BytesIO()
-    writer = pd.ExcelWriter(output, engine='xlsxwriter')
-    data.to_excel(writer, index=False, sheet_name='Sheet1')
-    writer.save()
-    processed_data = output.getvalue()
-    st.download_button(
-        label="Download data as Excel",
-        data=processed_data,
-        file_name=filename,
-        mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    )
-
 # Streamlit app
 st.title('Review Scraper')
 
@@ -121,7 +107,6 @@ if option == 'Trustpilot':
             reviews_df = pd.DataFrame(reviews, columns=['Review'])
             st.dataframe(reviews_df)
             download_csv(reviews_df, 'trustpilot_reviews.csv')
-            download_excel(reviews_df, 'trustpilot_reviews.xlsx')
         else:
             st.write("No reviews found or unable to scrape.")
 
@@ -134,15 +119,19 @@ elif option == 'PissedConsumer':
             reviews_df = pd.DataFrame(reviews, columns=['Review'])
             st.dataframe(reviews_df)
             download_csv(reviews_df, 'pissedconsumer_reviews.csv')
-            download_excel(reviews_df, 'pissedconsumer_reviews.xlsx')
         else:
             st.write("No reviews found or unable to scrape.")
 
 elif option == 'Google Play':
     st.write("To find the app ID, go to the Google Play Store, search for the app, and copy the part of the URL after `id=` (e.g., for `https://play.google.com/store/apps/details?id=com.example.app`, the app ID is `com.example.app`).")
     app_id = st.text_input('Enter the Google Play App ID:')
+    num_reviews = st.slider('Select number of reviews to scrape', min_value=100, max_value=5000, step=100, value=100)
+    sort_order = st.selectbox('Select the sort order of the reviews', ['Newest', 'Oldest'])
+    sort_order_map = {'Newest': Sort.NEWEST, 'Oldest': Sort.OLDEST}
+    sort_order_selected = sort_order_map[sort_order]
+
     if st.button('Scrape Reviews'):
-        reviews = scrape_google_play(app_id)
+        reviews = scrape_google_play(app_id, num_reviews, sort_order_selected)
         if reviews:
             app_details = fetch_google_play_app_details(app_id)
             st.write(f"App Title: {app_details['title']}")
@@ -155,7 +144,6 @@ elif option == 'Google Play':
             reviews_df = pd.DataFrame(reviews, columns=['Review'])
             st.dataframe(reviews_df)
             download_csv(reviews_df, 'google_play_reviews.csv')
-            download_excel(reviews_df, 'google_play_reviews.xlsx')
         else:
             st.write("No reviews found or unable to scrape.")
 
