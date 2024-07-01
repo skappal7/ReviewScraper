@@ -10,7 +10,7 @@ from google_play_scraper import Sort, reviews as gp_reviews, app as gp_app
 def scrape_trustpilot_by_name(name):
     search_url = f"https://www.trustpilot.com/search?query={name}"
     response = requests.get(search_url)
-    soup = BeautifulSoup(response.text, 'html.parser')
+    soup = BeautifulSoup(response.content, 'html.parser')
     try:
         company_url = soup.find('a', class_='search-result-heading__title').get('href')
         full_url = f"https://www.trustpilot.com{company_url}"
@@ -21,15 +21,14 @@ def scrape_trustpilot_by_name(name):
 def scrape_trustpilot(url):
     reviews = []
     response = requests.get(url)
-    soup = BeautifulSoup(response.text, 'html.parser')
-    
-    for review in soup.select('.styles_review__3HHTb'):
-        reviewer_name = review.select_one('.styles_consumerDetailsWrapper__nU4Xd .typography_typography__F2JzV.typography_bodysmall__2jSAv.typography_color--dark__5k6hX.typography_fontstyle--bold__j6yRo').text if review.select_one('.styles_consumerDetailsWrapper__nU4Xd .typography_typography__F2JzV.typography_bodysmall__2jSAv.typography_color--dark__5k6hX.typography_fontstyle--bold__j6yRo') else ''
-        review_date = review.select_one('time')['datetime'] if review.select_one('time') else ''
-        review_title = review.select_one('h2').text if review.select_one('h2') else ''
-        review_text = review.select_one('p').text if review.select_one('p') else ''
-        review_rating = review.select_one('.styles_reviewHeader__iU9Px img')['alt'][0] if review.select_one('.styles_reviewHeader__iU9Px img') else ''
-        
+    soup = BeautifulSoup(response.content, 'html.parser')
+    review_containers = soup.select('.styles_review__3HHTb')
+    for review in review_containers:
+        reviewer_name = review.select_one('.styles_consumerDetailsWrapper__nU4Xd .typography_typography__F2JzV.typography_bodysmall__2jSAv.typography_color--dark__5k6hX.typography_fontstyle--bold__j6yRo').text.strip()
+        review_date = review.select_one('time').text.strip()
+        review_title = review.select_one('h2').text.strip()
+        review_text = review.select_one('p').text.strip()
+        review_rating = review.select_one('.styles_reviewHeader__iU9Px img')['alt']
         reviews.append({
             'Reviewer Name': reviewer_name,
             'Review Date': review_date,
@@ -43,7 +42,7 @@ def scrape_trustpilot(url):
 def scrape_pissedconsumer_by_name(name):
     search_url = f"https://www.pissedconsumer.com/search.html?q={name}"
     response = requests.get(search_url)
-    soup = BeautifulSoup(response.text, 'html.parser')
+    soup = BeautifulSoup(response.content, 'html.parser')
     try:
         company_url = soup.find('a', class_='search-results-title').get('href')
         full_url = f"https://www.pissedconsumer.com{company_url}"
@@ -54,15 +53,14 @@ def scrape_pissedconsumer_by_name(name):
 def scrape_pissedconsumer(url):
     reviews = []
     response = requests.get(url)
-    soup = BeautifulSoup(response.text, 'html.parser')
-    
-    for review in soup.select('.complaints__item'):
-        reviewer_name = review.select_one('.complaints__author a').text if review.select_one('.complaints__author a') else ''
-        review_date = review.select_one('time')['datetime'] if review.select_one('time') else ''
-        review_title = review.select_one('h3 a').text if review.select_one('h3 a') else ''
-        review_text = review.select_one('.complaints__text').text if review.select_one('.complaints__text') else ''
-        review_rating = review.select_one('.rating img')['alt'][0] if review.select_one('.rating img') else ''
-        
+    soup = BeautifulSoup(response.content, 'html.parser')
+    review_containers = soup.select('.complaints__item')
+    for review in review_containers:
+        reviewer_name = review.select_one('.complaints__author a').text.strip()
+        review_date = review.select_one('time').text.strip()
+        review_title = review.select_one('h3 a').text.strip()
+        review_text = review.select_one('.complaints__text').text.strip()
+        review_rating = review.select_one('.rating img')['alt']
         reviews.append({
             'Reviewer Name': reviewer_name,
             'Review Date': review_date,
@@ -151,7 +149,7 @@ elif option == 'PissedConsumer':
 elif option == 'Google Play':
     st.write("To find the app ID, go to the Google Play Store, search for the app, and copy the part of the URL after `id=` (e.g., for `https://play.google.com/store/apps/details?id=com.example.app`, the app ID is `com.example.app`).")
     app_id = st.text_input('Enter the Google Play App ID:')
-    num_reviews = st.slider('Select number of reviews to scrape', min_value=100, max_value=5000, step=100, value=100)
+    num_reviews = st.slider('Select number of reviews to scrape', min_value=50, max_value=500, step=50, value=50)
     sort_order = st.selectbox('Select the sort order of the reviews', ['Newest', 'Rating'])
     sort_order_map = {'Newest': Sort.NEWEST, 'Rating': Sort.RATING}
     sort_order_selected = sort_order_map[sort_order]
