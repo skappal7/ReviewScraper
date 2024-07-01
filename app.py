@@ -54,7 +54,7 @@ st.write("To find the app ID, go to the Google Play Store, search for the app, a
 st.write("[Click here for a guide on how to find the Google Play Store app ID](https://www.sociablekit.com/how-to-find-google-play-app-id/)")
 
 app_id = st.text_input('Enter the Google Play App ID:')
-num_reviews = st.slider('Select number of reviews to scrape', min_value=100, max_value=5000, step=100, value=100)
+num_reviews = st.slider('Select number of reviews to scrape', min_value=1, max_value=1000, step=99, value=1)
 sort_order = st.selectbox('Select the sort order of the reviews', ['Newest', 'Rating'])
 sort_order_map = {'Newest': Sort.NEWEST, 'Rating': Sort.RATING}
 sort_order_selected = sort_order_map[sort_order]
