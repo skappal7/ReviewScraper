@@ -3,8 +3,8 @@ import pandas as pd
 import time
 from google_play_scraper import Sort, reviews as gp_reviews, app as gp_app
 
-# Function to scrape reviews from Google Play
-def scrape_google_play(app_id, num_reviews=100, sort_order=Sort.NEWEST):
+# Function to scrape reviews from Google Play with rating filter
+def scrape_google_play(app_id, num_reviews=100, sort_order=Sort.NEWEST, min_rating=None, max_rating=None):
     all_reviews = []
     next_token = None
     while len(all_reviews) < num_reviews:
@@ -14,7 +14,7 @@ def scrape_google_play(app_id, num_reviews=100, sort_order=Sort.NEWEST):
             country='us',
             sort=sort_order,
             count=min(num_reviews - len(all_reviews), 100),
-            filter_score_with=None,
+            filter_score_with=None if min_rating is None and max_rating is None else list(range(min_rating, max_rating + 1)),
             continuation_token=next_token
         )
         all_reviews.extend(current_reviews)
@@ -54,13 +54,17 @@ st.write("To find the app ID, go to the Google Play Store, search for the app, a
 st.write("[Click here for a guide on how to find the Google Play Store app ID](https://www.sociablekit.com/how-to-find-google-play-app-id/)")
 
 app_id = st.text_input('Enter the Google Play App ID:')
-num_reviews = st.slider('Select number of reviews to scrape', min_value=1, max_value=1000, step=100, value=1)
+num_reviews = st.slider('Select number of reviews to scrape', min_value=100, max_value=5000, step=100, value=100)
 sort_order = st.selectbox('Select the sort order of the reviews', ['Newest', 'Rating'])
 sort_order_map = {'Newest': Sort.NEWEST, 'Rating': Sort.RATING}
 sort_order_selected = sort_order_map[sort_order]
 
+min_rating, max_rating = None, None
+if sort_order_selected == Sort.RATING:
+    min_rating, max_rating = st.slider('Select the rating range', min_value=1, max_value=5, value=(1, 5))
+
 if st.button('Scrape Reviews'):
-    reviews = scrape_google_play(app_id, num_reviews, sort_order_selected)
+    reviews = scrape_google_play(app_id, num_reviews, sort_order_selected, min_rating, max_rating)
     if reviews:
         app_details = fetch_google_play_app_details(app_id)
         st.write(f"App Title: {app_details['title']}")
