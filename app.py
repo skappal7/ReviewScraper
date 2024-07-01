@@ -3,44 +3,42 @@ import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 import time
+from datetime import datetime
 from google_play_scraper import Sort, reviews as gp_reviews, app as gp_app
 
 headers = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
 }
 
-# Function to scrape reviews from Trustpilot by organization name
-def scrape_trustpilot_by_name(name):
-    search_url = f"https://www.trustpilot.com/search?query={name}"
-    response = requests.get(search_url, headers=headers)
-    soup = BeautifulSoup(response.content, 'html.parser')
-    try:
-        company_url = soup.find('a', class_='search-result-heading__title').get('href')
-        full_url = f"https://www.trustpilot.com{company_url}"
-        return scrape_trustpilot(full_url)
-    except AttributeError as e:
-        st.write(f"Error finding company URL: {e}")
-        return None
-
-def scrape_trustpilot(url):
+# Function to scrape reviews from Trustpilot
+def scrape_trustpilot(url, pages=1, start_date=None, end_date=None):
     reviews = []
     try:
-        response = requests.get(url, headers=headers)
-        soup = BeautifulSoup(response.content, 'html.parser')
-        review_containers = soup.select('.styles_review__3HHTb')
-        for review in review_containers:
-            reviewer_name = review.select_one('.styles_consumerDetailsWrapper__nU4Xd .typography_typography__F2JzV.typography_bodysmall__2jSAv.typography_color--dark__5k6hX.typography_fontstyle--bold__j6yRo').text.strip()
-            review_date = review.select_one('time').text.strip()
-            review_title = review.select_one('h2').text.strip()
-            review_text = review.select_one('p').text.strip()
-            review_rating = review.select_one('.styles_reviewHeader__iU9Px img')['alt']
-            reviews.append({
-                'Reviewer Name': reviewer_name,
-                'Review Date': review_date,
-                'Review Title': review_title,
-                'Review Text': review_text,
-                'Review Rating': review_rating
-            })
+        for page in range(1, pages + 1):
+            paged_url = f"{url}?page={page}"
+            response = requests.get(paged_url, headers=headers)
+            soup = BeautifulSoup(response.content, 'html.parser')
+            review_containers = soup.select('.styles_review__3HHTb')
+            for review in review_containers:
+                reviewer_name = review.select_one('.styles_consumerDetailsWrapper__nU4Xd .typography_typography__F2JzV.typography_bodysmall__2jSAv.typography_color--dark__5k6hX.typography_fontstyle--bold__j6yRo').text.strip()
+                review_date = review.select_one('time').text.strip()
+                review_date = datetime.strptime(review_date, '%b %d, %Y')
+                review_title = review.select_one('h2').text.strip()
+                review_text = review.select_one('p').text.strip()
+                review_rating = review.select_one('.styles_reviewHeader__iU9Px img')['alt']
+                
+                if start_date and end_date:
+                    if not (start_date <= review_date <= end_date):
+                        continue
+
+                reviews.append({
+                    'Reviewer Name': reviewer_name,
+                    'Review Date': review_date.strftime('%Y-%m-%d'),
+                    'Review Title': review_title,
+                    'Review Text': review_text,
+                    'Review Rating': review_rating
+                })
+            time.sleep(2)  # Add delay to avoid rate limiting
     except requests.exceptions.RequestException as e:
         st.write(f"An error occurred while making the request: {e}")
     except AttributeError as e:
@@ -49,38 +47,35 @@ def scrape_trustpilot(url):
         st.write(f"An unexpected error occurred: {e}")
     return reviews
 
-# Function to scrape reviews from PissedConsumer by organization name
-def scrape_pissedconsumer_by_name(name):
-    search_url = f"https://www.pissedconsumer.com/search.html?q={name}"
-    response = requests.get(search_url, headers=headers)
-    soup = BeautifulSoup(response.content, 'html.parser')
-    try:
-        company_url = soup.find('a', class_='search-results-title').get('href')
-        full_url = f"https://www.pissedconsumer.com{company_url}"
-        return scrape_pissedconsumer(full_url)
-    except AttributeError as e:
-        st.write(f"Error finding company URL: {e}")
-        return None
-
-def scrape_pissedconsumer(url):
+# Function to scrape reviews from PissedConsumer
+def scrape_pissedconsumer(url, pages=1, start_date=None, end_date=None):
     reviews = []
     try:
-        response = requests.get(url, headers=headers)
-        soup = BeautifulSoup(response.content, 'html.parser')
-        review_containers = soup.select('.complaints__item')
-        for review in review_containers:
-            reviewer_name = review.select_one('.complaints__author a').text.strip()
-            review_date = review.select_one('time').text.strip()
-            review_title = review.select_one('h3 a').text.strip()
-            review_text = review.select_one('.complaints__text').text.strip()
-            review_rating = review.select_one('.rating img')['alt']
-            reviews.append({
-                'Reviewer Name': reviewer_name,
-                'Review Date': review_date,
-                'Review Title': review_title,
-                'Review Text': review_text,
-                'Review Rating': review_rating
-            })
+        for page in range(1, pages + 1):
+            paged_url = f"{url}?page={page}"
+            response = requests.get(paged_url, headers=headers)
+            soup = BeautifulSoup(response.content, 'html.parser')
+            review_containers = soup.select('.complaints__item')
+            for review in review_containers:
+                reviewer_name = review.select_one('.complaints__author a').text.strip()
+                review_date = review.select_one('time').text.strip()
+                review_date = datetime.strptime(review_date, '%b %d, %Y')
+                review_title = review.select_one('h3 a').text.strip()
+                review_text = review.select_one('.complaints__text').text.strip()
+                review_rating = review.select_one('.rating img')['alt']
+                
+                if start_date and end_date:
+                    if not (start_date <= review_date <= end_date):
+                        continue
+
+                reviews.append({
+                    'Reviewer Name': reviewer_name,
+                    'Review Date': review_date.strftime('%Y-%m-%d'),
+                    'Review Title': review_title,
+                    'Review Text': review_text,
+                    'Review Rating': review_rating
+                })
+            time.sleep(2)  # Add delay to avoid rate limiting
     except requests.exceptions.RequestException as e:
         st.write(f"An error occurred while making the request: {e}")
     except AttributeError as e:
@@ -142,11 +137,18 @@ option = st.selectbox(
 )
 
 if option == 'Trustpilot':
-    org_name = st.text_input('Enter the name of the organization:')
+    url = st.text_input('Enter the Trustpilot URL:')
+    pages = st.slider('Select number of pages to scrape', min_value=1, max_value=20, value=1)
+    start_date = st.date_input('Start Date', value=None)
+    end_date = st.date_input('End Date', value=None)
+
     if st.button('Scrape Reviews'):
-        reviews = scrape_trustpilot_by_name(org_name)
+        start_date = datetime.combine(start_date, datetime.min.time()) if start_date else None
+        end_date = datetime.combine(end_date, datetime.max.time()) if end_date else None
+
+        reviews = scrape_trustpilot(url, pages, start_date, end_date)
         if reviews:
-            st.write(f"Scraped {len(reviews)} reviews for {org_name} from Trustpilot")
+            st.write(f"Scraped {len(reviews)} reviews from Trustpilot")
             reviews_df = pd.DataFrame(reviews)
             st.dataframe(reviews_df)
             download_csv(reviews_df, 'trustpilot_reviews.csv')
@@ -154,11 +156,18 @@ if option == 'Trustpilot':
             st.write("No reviews found or unable to scrape.")
 
 elif option == 'PissedConsumer':
-    org_name = st.text_input('Enter the name of the organization:')
+    url = st.text_input('Enter the PissedConsumer URL:')
+    pages = st.slider('Select number of pages to scrape', min_value=1, max_value=20, value=1)
+    start_date = st.date_input('Start Date', value=None)
+    end_date = st.date_input('End Date', value=None)
+
     if st.button('Scrape Reviews'):
-        reviews = scrape_pissedconsumer_by_name(org_name)
+        start_date = datetime.combine(start_date, datetime.min.time()) if start_date else None
+        end_date = datetime.combine(end_date, datetime.max.time()) if end_date else None
+
+        reviews = scrape_pissedconsumer(url, pages, start_date, end_date)
         if reviews:
-            st.write(f"Scraped {len(reviews)} reviews for {org_name} from PissedConsumer")
+            st.write(f"Scraped {len(reviews)} reviews from PissedConsumer")
             reviews_df = pd.DataFrame(reviews)
             st.dataframe(reviews_df)
             download_csv(reviews_df, 'pissedconsumer_reviews.csv')
@@ -168,7 +177,7 @@ elif option == 'PissedConsumer':
 elif option == 'Google Play':
     st.write("To find the app ID, go to the Google Play Store, search for the app, and copy the part of the URL after `id=` (e.g., for `https://play.google.com/store/apps/details?id=com.example.app`, the app ID is `com.example.app`).")
     app_id = st.text_input('Enter the Google Play App ID:')
-    num_reviews = st.slider('Select number of reviews to scrape', min_value=50, max_value=500, step=50, value=0)
+    num_reviews = st.slider('Select number of reviews to scrape', min_value=0, max_value=500, step=50, value=0)
     sort_order = st.selectbox('Select the sort order of the reviews', ['Newest', 'Rating'])
     sort_order_map = {'Newest': Sort.NEWEST, 'Rating': Sort.RATING}
     sort_order_selected = sort_order_map[sort_order]
