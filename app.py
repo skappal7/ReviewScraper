@@ -168,7 +168,7 @@ elif option == 'PissedConsumer':
 elif option == 'Google Play':
     st.write("To find the app ID, go to the Google Play Store, search for the app, and copy the part of the URL after `id=` (e.g., for `https://play.google.com/store/apps/details?id=com.example.app`, the app ID is `com.example.app`).")
     app_id = st.text_input('Enter the Google Play App ID:')
-    num_reviews = st.slider('Select number of reviews to scrape', min_value=100, max_value=5000, step=100, value=100)
+    num_reviews = st.slider('Select number of reviews to scrape', min_value=50, max_value=500, step=50, value=10)
     sort_order = st.selectbox('Select the sort order of the reviews', ['Newest', 'Rating'])
     sort_order_map = {'Newest': Sort.NEWEST, 'Rating': Sort.RATING}
     sort_order_selected = sort_order_map[sort_order]
