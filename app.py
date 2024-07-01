@@ -4,6 +4,7 @@ from bs4 import BeautifulSoup
 import pandas as pd
 import io
 import time
+import xlsxwriter
 from google_play_scraper import Sort, reviews as gp_reviews
 
 # Function to scrape reviews from Trustpilot by organization name
