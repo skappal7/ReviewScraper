@@ -24,3 +24,5 @@ Make sure you have Python installed on your system. You can download it from [py
 1. Clone the repository:
    ```bash
    git clone https://github.com/skappal7/ReviewScraper.git
+
+Made with ❤️ by skappal7
