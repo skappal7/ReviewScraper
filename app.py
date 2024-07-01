@@ -4,17 +4,19 @@ from bs4 import BeautifulSoup
 import pandas as pd
 import io
 import time
-import xlsxwriter
-from google_play_scraper import Sort, reviews as gp_reviews
+from google_play_scraper import Sort, reviews as gp_reviews, app as gp_app
 
 # Function to scrape reviews from Trustpilot by organization name
 def scrape_trustpilot_by_name(name):
     search_url = f"https://www.trustpilot.com/search?query={name}"
     response = requests.get(search_url)
     soup = BeautifulSoup(response.text, 'html.parser')
-    company_url = soup.find('a', class_='search-result-heading__title').get('href')
-    full_url = f"https://www.trustpilot.com{company_url}"
-    return scrape_trustpilot(full_url)
+    try:
+        company_url = soup.find('a', class_='search-result-heading__title').get('href')
+        full_url = f"https://www.trustpilot.com{company_url}"
+        return scrape_trustpilot(full_url)
+    except AttributeError:
+        return None
 
 def scrape_trustpilot(url):
     reviews = []
@@ -29,9 +31,12 @@ def scrape_pissedconsumer_by_name(name):
     search_url = f"https://www.pissedconsumer.com/search.html?q={name}"
     response = requests.get(search_url)
     soup = BeautifulSoup(response.text, 'html.parser')
-    company_url = soup.find('a', class_='search-results-title').get('href')
-    full_url = f"https://www.pissedconsumer.com{company_url}"
-    return scrape_pissedconsumer(full_url)
+    try:
+        company_url = soup.find('a', class_='search-results-title').get('href')
+        full_url = f"https://www.pissedconsumer.com{company_url}"
+        return scrape_pissedconsumer(full_url)
+    except AttributeError:
+        return None
 
 def scrape_pissedconsumer(url):
     reviews = []
@@ -49,7 +54,7 @@ def scrape_google_play(app_id, reviews_per_request=100, total_reviews_to_fetch=2
         current_reviews, token = gp_reviews(
             app_id,
             lang='en',
-            country='in',
+            country='us',
             sort=Sort.NEWEST,
             count=reviews_per_request,
             filter_score_with=None,
@@ -62,6 +67,18 @@ def scrape_google_play(app_id, reviews_per_request=100, total_reviews_to_fetch=2
         time.sleep(5)
     reviews_text = [review['content'] for review in all_reviews]
     return reviews_text
+
+# Function to fetch Google Play app details
+def fetch_google_play_app_details(app_id):
+    app_details = gp_app(app_id)
+    return {
+        'title': app_details['title'],
+        'installs': app_details['installs'],
+        'score': app_details['score'],
+        'ratings': app_details['ratings'],
+        'reviews': app_details['reviews'],
+        'description': app_details['description']
+    }
 
 # Function to download data as CSV
 def download_csv(data, filename):
@@ -122,11 +139,18 @@ elif option == 'PissedConsumer':
             st.write("No reviews found or unable to scrape.")
 
 elif option == 'Google Play':
-    st.write("To find the app ID, go to the Google Play Store, search for the app, and copy the part of the URL after 'id=' (e.g., for 'https://play.google.com/store/apps/details?id=com.example.app', the app ID is 'com.example.app').")
+    st.write("To find the app ID, go to the Google Play Store, search for the app, and copy the part of the URL after `id=` (e.g., for `https://play.google.com/store/apps/details?id=com.example.app`, the app ID is `com.example.app`).")
     app_id = st.text_input('Enter the Google Play App ID:')
     if st.button('Scrape Reviews'):
         reviews = scrape_google_play(app_id)
         if reviews:
+            app_details = fetch_google_play_app_details(app_id)
+            st.write(f"App Title: {app_details['title']}")
+            st.write(f"Installs: {app_details['installs']}")
+            st.write(f"Average Rating: {app_details['score']}")
+            st.write(f"Total Ratings: {app_details['ratings']}")
+            st.write(f"Total Reviews: {app_details['reviews']}")
+            st.write(f"Description: {app_details['description']}")
             st.write(f"Scraped {len(reviews)} reviews for App ID {app_id}")
             reviews_df = pd.DataFrame(reviews, columns=['Review'])
             st.dataframe(reviews_df)
