@@ -5,19 +5,32 @@ import pandas as pd
 import time
 from datetime import datetime
 from google_play_scraper import Sort, reviews as gp_reviews, app as gp_app
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
-headers = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-}
+# Initialize Selenium WebDriver
+def init_selenium():
+    chrome_options = webdriver.ChromeOptions()
+    chrome_options.add_argument('--headless')
+    chrome_options.add_argument('--no-sandbox')
+    chrome_options.add_argument('--disable-dev-shm-usage')
+    service = Service('path/to/chromedriver')  # Ensure chromedriver is in PATH or provide full path
+    driver = webdriver.Chrome(service=service, options=chrome_options)
+    return driver
 
 # Function to scrape reviews from Trustpilot
 def scrape_trustpilot(url, pages=1, start_date=None, end_date=None):
     reviews = []
+    driver = init_selenium()
     try:
         for page in range(1, pages + 1):
             paged_url = f"{url}?page={page}"
-            response = requests.get(paged_url, headers=headers)
-            soup = BeautifulSoup(response.content, 'html.parser')
+            driver.get(paged_url)
+            WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, '.styles_review__3HHTb')))
+            soup = BeautifulSoup(driver.page_source, 'html.parser')
             review_containers = soup.select('.styles_review__3HHTb')
             for review in review_containers:
                 reviewer_name = review.select_one('.styles_consumerDetailsWrapper__nU4Xd .typography_typography__F2JzV.typography_bodysmall__2jSAv.typography_color--dark__5k6hX.typography_fontstyle--bold__j6yRo').text.strip()
@@ -39,22 +52,22 @@ def scrape_trustpilot(url, pages=1, start_date=None, end_date=None):
                     'Review Rating': review_rating
                 })
             time.sleep(2)  # Add delay to avoid rate limiting
-    except requests.exceptions.RequestException as e:
-        st.write(f"An error occurred while making the request: {e}")
-    except AttributeError as e:
-        st.write(f"An error occurred while parsing the HTML: {e}")
     except Exception as e:
-        st.write(f"An unexpected error occurred: {e}")
+        st.write(f"An error occurred: {e}")
+    finally:
+        driver.quit()
     return reviews
 
 # Function to scrape reviews from PissedConsumer
 def scrape_pissedconsumer(url, pages=1, start_date=None, end_date=None):
     reviews = []
+    driver = init_selenium()
     try:
         for page in range(1, pages + 1):
             paged_url = f"{url}?page={page}"
-            response = requests.get(paged_url, headers=headers)
-            soup = BeautifulSoup(response.content, 'html.parser')
+            driver.get(paged_url)
+            WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, '.complaints__item')))
+            soup = BeautifulSoup(driver.page_source, 'html.parser')
             review_containers = soup.select('.complaints__item')
             for review in review_containers:
                 reviewer_name = review.select_one('.complaints__author a').text.strip()
@@ -76,12 +89,10 @@ def scrape_pissedconsumer(url, pages=1, start_date=None, end_date=None):
                     'Review Rating': review_rating
                 })
             time.sleep(2)  # Add delay to avoid rate limiting
-    except requests.exceptions.RequestException as e:
-        st.write(f"An error occurred while making the request: {e}")
-    except AttributeError as e:
-        st.write(f"An error occurred while parsing the HTML: {e}")
     except Exception as e:
-        st.write(f"An unexpected error occurred: {e}")
+        st.write(f"An error occurred: {e}")
+    finally:
+        driver.quit()
     return reviews
 
 # Function to scrape reviews from Google Play
@@ -177,7 +188,7 @@ elif option == 'PissedConsumer':
 elif option == 'Google Play':
     st.write("To find the app ID, go to the Google Play Store, search for the app, and copy the part of the URL after `id=` (e.g., for `https://play.google.com/store/apps/details?id=com.example.app`, the app ID is `com.example.app`).")
     app_id = st.text_input('Enter the Google Play App ID:')
-    num_reviews = st.slider('Select number of reviews to scrape', min_value=0, max_value=500, step=50, value=0)
+    num_reviews = st.slider('Select number of reviews to scrape', min_value=100, max_value=5000, step=100, value=100)
     sort_order = st.selectbox('Select the sort order of the reviews', ['Newest', 'Rating'])
     sort_order_map = {'Newest': Sort.NEWEST, 'Rating': Sort.RATING}
     sort_order_selected = sort_order_map[sort_order]
