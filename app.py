@@ -22,8 +22,21 @@ def scrape_trustpilot(url):
     reviews = []
     response = requests.get(url)
     soup = BeautifulSoup(response.text, 'html.parser')
-    for review in soup.find_all('p', class_='review-content__text'):
-        reviews.append(review.text.strip())
+    
+    for review in soup.select('.styles_review__3HHTb'):
+        reviewer_name = review.select_one('.styles_consumerDetailsWrapper__nU4Xd .typography_typography__F2JzV.typography_bodysmall__2jSAv.typography_color--dark__5k6hX.typography_fontstyle--bold__j6yRo').text if review.select_one('.styles_consumerDetailsWrapper__nU4Xd .typography_typography__F2JzV.typography_bodysmall__2jSAv.typography_color--dark__5k6hX.typography_fontstyle--bold__j6yRo') else ''
+        review_date = review.select_one('time')['datetime'] if review.select_one('time') else ''
+        review_title = review.select_one('h2').text if review.select_one('h2') else ''
+        review_text = review.select_one('p').text if review.select_one('p') else ''
+        review_rating = review.select_one('.styles_reviewHeader__iU9Px img')['alt'][0] if review.select_one('.styles_reviewHeader__iU9Px img') else ''
+        
+        reviews.append({
+            'Reviewer Name': reviewer_name,
+            'Review Date': review_date,
+            'Review Title': review_title,
+            'Review Text': review_text,
+            'Review Rating': review_rating
+        })
     return reviews
 
 # Function to scrape reviews from PissedConsumer by organization name
@@ -42,8 +55,21 @@ def scrape_pissedconsumer(url):
     reviews = []
     response = requests.get(url)
     soup = BeautifulSoup(response.text, 'html.parser')
-    for review in soup.find_all('p', class_='review-text'):
-        reviews.append(review.text.strip())
+    
+    for review in soup.select('.complaints__item'):
+        reviewer_name = review.select_one('.complaints__author a').text if review.select_one('.complaints__author a') else ''
+        review_date = review.select_one('time')['datetime'] if review.select_one('time') else ''
+        review_title = review.select_one('h3 a').text if review.select_one('h3 a') else ''
+        review_text = review.select_one('.complaints__text').text if review.select_one('.complaints__text') else ''
+        review_rating = review.select_one('.rating img')['alt'][0] if review.select_one('.rating img') else ''
+        
+        reviews.append({
+            'Reviewer Name': reviewer_name,
+            'Review Date': review_date,
+            'Review Title': review_title,
+            'Review Text': review_text,
+            'Review Rating': review_rating
+        })
     return reviews
 
 # Function to scrape reviews from Google Play
@@ -104,7 +130,7 @@ if option == 'Trustpilot':
         reviews = scrape_trustpilot_by_name(org_name)
         if reviews:
             st.write(f"Scraped {len(reviews)} reviews for {org_name} from Trustpilot")
-            reviews_df = pd.DataFrame(reviews, columns=['Review'])
+            reviews_df = pd.DataFrame(reviews)
             st.dataframe(reviews_df)
             download_csv(reviews_df, 'trustpilot_reviews.csv')
         else:
@@ -116,7 +142,7 @@ elif option == 'PissedConsumer':
         reviews = scrape_pissedconsumer_by_name(org_name)
         if reviews:
             st.write(f"Scraped {len(reviews)} reviews for {org_name} from PissedConsumer")
-            reviews_df = pd.DataFrame(reviews, columns=['Review'])
+            reviews_df = pd.DataFrame(reviews)
             st.dataframe(reviews_df)
             download_csv(reviews_df, 'pissedconsumer_reviews.csv')
         else:
