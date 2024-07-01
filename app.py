@@ -20,11 +20,12 @@ def scrape_trustpilot(url, pages=1, start_date=None, end_date=None):
             soup = BeautifulSoup(response.content, 'html.parser')
             review_containers = soup.select('.styles_review__3HHTb')
             for review in review_containers:
-                reviewer_name = review.select_one('.styles_consumerDetailsWrapper__nU4Xd .typography_typography__F2JzV.typography_bodysmall__2jSAv.typography_color--dark__5k6hX.typography_fontstyle--bold__j6yRo').text.strip()
+                reviewer_name = review.select_one('.styles_consumerDetailsWrapper__nU4Xd .typography_typography__F2JzV.typography_bodysmall__2jSAv.typography_color--dark__5k6hX.typography_fontstyle--bold__j6yRo')
+                reviewer_name = reviewer_name.text.strip() if reviewer_name else 'N/A'
                 review_date = review.select_one('time').text.strip()
                 review_date = datetime.strptime(review_date, '%b %d, %Y')
-                review_title = review.select_one('h2').text.strip()
-                review_text = review.select_one('p').text.strip()
+                review_title = review.select_one('h2').text.strip() if review.select_one('h2') else 'No Title'
+                review_text = review.select_one('.typography_body-l__KUYFJ.typography_appearance-default__AAY17.typography_color-black__5LYEn').text.strip()
                 review_rating = review.select_one('.styles_reviewHeader__iU9Px img')['alt']
                 
                 if start_date and end_date:
@@ -57,11 +58,12 @@ def scrape_pissedconsumer(url, pages=1, start_date=None, end_date=None):
             soup = BeautifulSoup(response.content, 'html.parser')
             review_containers = soup.select('.complaints__item')
             for review in review_containers:
-                reviewer_name = review.select_one('.complaints__author a').text.strip()
+                reviewer_name = review.select_one('.complaints__author a')
+                reviewer_name = reviewer_name.text.strip() if reviewer_name else 'N/A'
                 review_date = review.select_one('time').text.strip()
                 review_date = datetime.strptime(review_date, '%b %d, %Y')
-                review_title = review.select_one('h3 a').text.strip()
-                review_text = review.select_one('.complaints__text').text.strip()
+                review_title = review.select_one('h3 a').text.strip() if review.select_one('h3 a') else 'No Title'
+                review_text = review.select_one('.overflow-text[itemprop="reviewBody"]').text.strip()
                 review_rating = review.select_one('.rating img')['alt']
                 
                 if start_date and end_date:
